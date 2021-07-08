@@ -18,30 +18,38 @@ struct Opt {
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let opt = Opt::from_args();
 
+    // Finite element model
     let snd_ord = {
         let snd_ord = dos::SecondOrder::from_pickle("/media/rconan/FEM/20210614_2105_ASM_topendOnly/modal_state_space_model_2ndOrder_1500Hz_noRes_postproc.pkl")?;
+        // Model reduction
         snd_ord.into(
+            // Segment #1
             vec![jar::M2S1FSCPModalF::io(), jar::M2S1FSRBModalF::io()],
             vec![jar::M2S1FSRBModalD::io(), jar::M2S1FSModalD::io()],
         )
     };
     println!("{}", &snd_ord);
+    // Discrete state space model from 2nd order FEM
     let sampling_rate = 8e3;
     let mut dms: dos::DiscreteModalSolver<dos::Exponential> = (snd_ord, sampling_rate).into();
 
+    // ASM controller
     let mut asm_ctrl = asm_control::Controller::new(asm_control::Segment::One);
     let fluid_damping_gain = -9.1_f64;
-    let mut fem: Option<Vec<IO<Vec<f64>>>> = None;
-
+    // ASM command input
     let mut asm_cmd = vec![0f64; 66];
     asm_cmd[0] = 1e-6;
+
+    // FEM state space output
+    let mut fem: Option<Vec<IO<Vec<f64>>>> = None;
 
     let n_step = opt.n_step;
     let decimation = 1_usize;
     let mut modal_fs: Vec<IO<Vec<f64>>> = Vec::with_capacity(n_step / decimation);
-
     let now = Instant::now();
     for _k in 0..n_step {
+        // ASM controller update & output:
+        //  - getting FEM feedback
         let u = match fem {
             Some(values) => vec![
                 //jar::M2S1FSRBModalD::io_with(vec![0f64; 66]),
@@ -53,6 +61,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 jar::ASMCmd::io_with(asm_cmd.clone()),
             ],
         };
+        //  - stepping & outputing
         let mut y = asm_ctrl.in_step_out(Some(u.clone()))?;
         if let Some(ref mut v) = y {
             v[jar::M2S1FSCPModalF::io::<()>()] *= opt.modal_forces_gain;
@@ -67,7 +76,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 [0],
         );*/
 
+        // FEM update & output:
         fem = dms.in_step_out(y)?;
+        //  - logging the face sheet outputs
         if let Some(ref x) = fem {
             modal_fs.push(x[jar::M2S1FSModalD::io::<()>()].clone());
             /*if k % decimation == 0 {
@@ -80,7 +91,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             );*/
         };
     }
-
     let elapsed = now.elapsed().as_millis();
     println!(
         "Elapsed time: {}ms [{:.3}ms/step]",
@@ -88,6 +98,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         elapsed as f64 / n_step as f64
     );
 
+    // Post-processing logged data
     let time_series: Vec<_> = modal_fs
         .iter()
         .map(|y| Option::<Vec<f64>>::from(y).unwrap())
@@ -100,6 +111,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let root_area = BitMapBackend::new("modal_facesheet.png", (1200, 800)).into_drawing_area();
     root_area.fill(&WHITE)?;
 
+    // Plotting ...
     let mut ctx = ChartBuilder::on(&root_area)
         .margin(20)
         .set_label_area_size(LabelAreaPosition::Left, 40)
