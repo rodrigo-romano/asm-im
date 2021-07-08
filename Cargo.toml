@@ -1,0 +1,18 @@
+[package]
+name = "asm-im"
+version = "0.1.0"
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[workspace]
+members = ["asm-control"]
+
+[dependencies]
+dosio = { git = "https://github.com/rconan/dosio.git", branch = "main" }
+fem = { git = "https://github.com/rconan/fem.git", branch = "dos", features = ["dos"] }
+#fem = { path = "/home/rconan/projects/fem", features = ["dos"] }
+simple_logger = "1.11.0"
+asm-control = { path = "asm-control"} #, features = ["eight_khz"] }
+plotters = "0.3.1"
+colorous = "1.0.5"
+structopt = "0.3.22"
