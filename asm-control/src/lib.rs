@@ -1,13 +1,10 @@
-#[cfg(feature = "eight_khz")]
-pub(crate) mod eight_khz;
-#[cfg(feature = "eight_khz")]
-pub use eight_khz::*;
-
-#[cfg(feature = "fourty_khz")]
-pub(crate) mod fourty_khz;
-#[cfg(feature = "fourty_khz")]
-pub use fourty_khz::*;
-
+pub mod segment1;
+pub mod segment2;
+pub mod segment3;
+pub mod segment4;
+pub mod segment5;
+pub mod segment6;
+pub mod segment7;
 pub enum AsmControllers<'a> {
     One(segment1::Controller<'a>),
     Two(segment2::Controller<'a>),
