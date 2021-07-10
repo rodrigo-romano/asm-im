@@ -1,14 +1,21 @@
-#[cfg(feature = "eight_khz")]
-pub(crate) mod eight_khz;
-#[cfg(feature = "eight_khz")]
-pub use eight_khz::*;
+//! This crate contains Rust wrappers around the Simulink C-translated ASM segment inner loop controllers
+//!
+//! The Simulink C version of the controllers uses static variables so, in order to differentiate each segment controller, the static variable are renamed according to the segment #.
+//! The `Makefile` uses [segment1] module as a template and copy it into a new module and substitute S1 with S`ID` in each file, e.g.
+//! ```
+//! make new ID=5
+//! ```
+//! to create a `segment5` module from `segment`.
 
-#[cfg(feature = "fourty_khz")]
-pub(crate) mod fourty_khz;
-#[cfg(feature = "fourty_khz")]
-pub use fourty_khz::*;
-
-pub enum AsmControllers<'a> {
+pub mod segment1;
+pub mod segment2;
+pub mod segment3;
+pub mod segment4;
+pub mod segment5;
+pub mod segment6;
+pub mod segment7;
+/// ASM segment controller
+pub enum AsmController<'a> {
     One(segment1::Controller<'a>),
     Two(segment2::Controller<'a>),
     Three(segment3::Controller<'a>),
@@ -18,14 +25,18 @@ pub enum AsmControllers<'a> {
     Seven(segment7::Controller<'a>),
 }
 
+/// The ASMS control model
 pub struct ASMS<'a> {
-    pub controllers: Vec<AsmControllers<'a>>,
+    /// The 7 ASM segments controllers
+    pub controllers: Vec<AsmController<'a>>,
+    /// The proportional gain on the voice coils modal forces
     pub modal_forces_gain: f64,
+    /// The segments fluid damping gain
     pub fluid_damping_gain: f64,
 }
 impl<'a> Default for ASMS<'a> {
     fn default() -> Self {
-        use AsmControllers::*;
+        use AsmController::*;
         Self {
             controllers: vec![
                 One(segment1::Controller::new()),
@@ -42,9 +53,11 @@ impl<'a> Default for ASMS<'a> {
     }
 }
 impl<'a> ASMS<'a> {
+    /// Creates a new ASMS control model
     pub fn new() -> Self {
         Default::default()
     }
+    /// Sets the proportional gain on the voice coils modal forces
     pub fn modal_forces_gain(self, modal_forces_gain: f64) -> Self {
         Self {
             modal_forces_gain,
@@ -54,8 +67,9 @@ impl<'a> ASMS<'a> {
 }
 
 impl<'a> From<Vec<u8>> for ASMS<'a> {
+    /// Creates a new ASMS control model from a vector of segment id # in the range [1,7]
     fn from(sid: Vec<u8>) -> Self {
-        use AsmControllers::*;
+        use AsmController::*;
         Self {
             controllers: sid
                 .into_iter()
@@ -69,7 +83,7 @@ impl<'a> From<Vec<u8>> for ASMS<'a> {
                     7 => Seven(segment7::Controller::new()),
                     _ => panic!("Segment number id must in the range [1,2,...,7]"),
                 })
-                .collect::<Vec<AsmControllers>>(),
+                .collect::<Vec<AsmController>>(),
             ..Default::default()
         }
     }
@@ -79,7 +93,7 @@ use dosio::{io::Tags, ios, DOSIOSError, Dos, IOTags, IO};
 
 impl<'a> IOTags for ASMS<'a> {
     fn outputs_tags(&self) -> Vec<Tags> {
-        use AsmControllers::*;
+        use AsmController::*;
         self.controllers
             .iter()
             .flat_map(|controller| match controller {
@@ -94,7 +108,7 @@ impl<'a> IOTags for ASMS<'a> {
             .collect()
     }
     fn inputs_tags(&self) -> Vec<Tags> {
-        use AsmControllers::*;
+        use AsmController::*;
         self.controllers
             .iter()
             .flat_map(|controller| match controller {
@@ -114,7 +128,7 @@ impl<'a> Dos for ASMS<'a> {
     type Output = Vec<f64>;
 
     fn outputs(&mut self) -> Option<Vec<IO<Self::Output>>> {
-        use AsmControllers::*;
+        use AsmController::*;
         let Self {
             modal_forces_gain,
             fluid_damping_gain,
@@ -185,7 +199,7 @@ impl<'a> Dos for ASMS<'a> {
     }
 
     fn inputs(&mut self, data: Option<Vec<IO<Self::Input>>>) -> Result<&mut Self, DOSIOSError> {
-        use AsmControllers::*;
+        use AsmController::*;
         if let Some(data) = data {
             self.controllers
                 .iter_mut()
@@ -247,7 +261,7 @@ impl<'a> Iterator for ASMS<'a> {
     type Item = ();
 
     fn next(&mut self) -> Option<Self::Item> {
-        use AsmControllers::*;
+        use AsmController::*;
         self.controllers
             .iter_mut()
             .map(|controller| match controller {
