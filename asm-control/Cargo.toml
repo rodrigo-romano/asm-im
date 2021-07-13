@@ -8,13 +8,7 @@ edition = "2018"
 [dependencies]
 dosio = { git = "https://github.com/rconan/dosio.git", branch = "main" }
 paste = "1.0.5"
-#simulink-rs = { git = "https://github.com/rconan/simulink-rs.git", branch = "main" }
-simulink-rs = { path = "/media/rconan/projects/simulink-rs" }
-
-[features]
-default = ["eight_khz"]
-eight_khz = []
-fourty_khz = []
+simulink-rs = { git = "https://github.com/rconan/simulink-rs.git", branch = "main" }
 
 [build-dependencies]
 cc = "1.0.68"

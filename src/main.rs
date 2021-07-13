@@ -16,6 +16,9 @@ struct Opt {
     /// Modal forces gain
     #[structopt(short = "g", long = "gain", default_value = "0.5")]
     modal_forces_gain: f64,
+    /// GIF animation flag
+    #[structopt(long)]
+    gif: bool,
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -29,13 +32,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         M2segment4axiald,
         M2segment5axiald,
         M2segment6axiald,
-        M2segment7axiald /*        M2S1FSModalD,
-                         M2S2FSModalD,
-                         M2S3FSModalD,
-                         M2S4FSModalD,
-                         M2S5FSModalD,
-                         M2S6FSModalD,
-                         M2S7FSModalD*/
+        M2segment7axiald
     );
     let mut asms = ASMS::new().modal_forces_gain(opt.modal_forces_gain);
     // ASM command input (segment #1)
@@ -151,7 +148,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         elapsed as f64 / n_step as f64
     );
 
-    let outer_radial_center = 1.1f64;
+    // Post-processing:
     println!("modal_fs: {}", modal_fs.len());
     let segment_figures: Vec<Vec<f64>> = modal_fs
         .chunks(7)
@@ -165,28 +162,27 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         segment_figures.len(),
         segment_figures[0].len()
     );
+    //  - segment piston
     let segment_piston: Vec<_> = segment_figures
         .iter()
         .map(|fig| 1e6 * fig.iter().sum::<f64>() / fig.len() as f64)
         .collect();
     println!("Segment piston: {:7.3?}micron", segment_piston);
+    //  - pupil piston
     let pupil_piston = segment_piston.iter().sum::<f64>() / 7f64;
     println!("Pupil piston: {:7.3}micron", pupil_piston);
-    let segment_wavefront_var: Vec<_> = segment_figures
+    //  - segment surface std
+    let segment_surface_std: Vec<_> = segment_figures
         .iter()
         .zip(segment_piston.iter())
         .map(|(fig, pist)| {
             fig.iter().map(|x| (1e6 * x - pist).powi(2)).sum::<f64>() / fig.len() as f64
         })
+        .map(|x| 1e3 * x.sqrt())
         .collect();
-    println!(
-        "Segment wavefront STD: {:7.3?}micron",
-        segment_wavefront_var
-            .iter()
-            .map(|&x| x.sqrt())
-            .collect::<Vec<f64>>()
-    );
-    let wavefront_var = segment_figures
+    println!("Segment surface STD: {:4.0?}nm", segment_surface_std);
+    //  - pupil surface std
+    let surface_var = segment_figures
         .iter()
         .map(|fig| {
             fig.iter()
@@ -195,150 +191,93 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         })
         .sum::<f64>()
         / (7f64 * 675f64);
+    println!("Pupil surface STD: {:4.0?}nm", 1e3 * surface_var.sqrt());
 
-    println!("Pupil wavefront STD: {:7.3?}micron", wavefront_var.sqrt());
-
-    let coordinates: Vec<Vec<(f64, f64)>> = actuators_locations
-        .iter()
-        .enumerate()
-        .map(|(k, actuators_location)| {
-            let (x0, y0) = if k < 6 {
-                {
-                    let o = 2f64 * std::f64::consts::PI * (k as f64 / 6. + 0.25);
-                    (outer_radial_center * o.cos(), outer_radial_center * o.sin())
-                }
-            } else {
-                (0f64, 0f64)
-            };
-            actuators_location
-                .iter()
-                .map(move |point| (x0 + point[0], y0 + point[1]))
-                .collect()
-        })
-        .collect();
-
-    //    let root_area = BitMapBackend::new("nodal_facesheet.png", (800, 880)).into_drawing_area();
-    let root_area = BitMapBackend::gif("nodal_facesheet.gif", (800, 880), 1_000)
-        .unwrap()
-        .into_drawing_area();
-
-    for (i, actuators_disp) in modal_fs.chunks(7).enumerate() {
-        let segment_figures: Vec<Vec<f64>> = actuators_disp
+    if opt.gif {
+        let outer_radial_center = 1.1f64;
+        let coordinates: Vec<Vec<(f64, f64)>> = actuators_locations
             .iter()
-            .map(|y| Option::<Vec<f64>>::from(y).unwrap())
-            .collect();
-
-        root_area.fill(&WHITE)?;
-        let (plot, colorbar) = root_area.split_vertically(800);
-        let lim = 1.75f64;
-        let mut ctx = ChartBuilder::on(&plot)
-            .margin(20)
-            .set_label_area_size(LabelAreaPosition::Left, 20)
-            .set_label_area_size(LabelAreaPosition::Bottom, 20)
-            .caption(
-                format!("T = {:7.3}s", i as f64 * decimation as f64 / sampling_rate),
-                ("sans-serif", 16, &BLACK),
-            )
-            //.caption("Line Plot Demo", ("sans-serif", 40))
-            //.build_cartesian_2d(0f64..n_step as f64 / sampling_rate, -1e-3f64..10e-3f64)
-            .build_cartesian_2d(-lim..lim, -lim..lim)?;
-        ctx.configure_mesh().draw()?;
-        let mut max_figs = vec![];
-        let mut min_figs = vec![];
-        for (coord, fig) in coordinates.iter().zip(segment_figures.iter()) {
-            let (x, y): (Vec<_>, Vec<_>) = coord.iter().copied().unzip();
-            max_figs.push(fig.iter().cloned().fold(f64::NEG_INFINITY, f64::max));
-            min_figs.push(fig.iter().cloned().fold(f64::INFINITY, f64::min));
-            plt::trimap(&x, &y, fig, &mut ctx);
-            ctx.draw_series(
-                coord
+            .enumerate()
+            .map(|(k, actuators_location)| {
+                let (x0, y0) = if k < 6 {
+                    {
+                        let o = 2f64 * std::f64::consts::PI * (k as f64 / 6. + 0.25);
+                        (outer_radial_center * o.cos(), outer_radial_center * o.sin())
+                    }
+                } else {
+                    (0f64, 0f64)
+                };
+                actuators_location
                     .iter()
-                    .map(|&point| Circle::new(point, 2, BLACK.mix(0.25))),
-            )
-            .unwrap();
-        }
-
-        // COLORBAR
-        let cells_min = 1e6 * min_figs.into_iter().fold(f64::INFINITY, f64::min);
-        let cells_max = 1e6 * max_figs.into_iter().fold(f64::NEG_INFINITY, f64::max);
-        colorbar.fill(&BLACK)?;
-        let mut colorbar_chart = ChartBuilder::on(&colorbar)
-            //    .margin_left(20)
-            //    .margin_right(20)
-            .set_label_area_size(LabelAreaPosition::Bottom, 40)
-            .build_cartesian_2d(cells_min..cells_max, 0f64..1f64)?;
-        let mut mesh = colorbar_chart.configure_mesh();
-        mesh.axis_style(WHITE)
-            .set_tick_mark_size(LabelAreaPosition::Bottom, 5)
-            .x_label_style(("sans-serif", 14, &WHITE))
-            .x_desc("WFE [micron]")
-            .draw()?;
-        let dx = (cells_max - cells_min) / (800 - 1) as f64;
-        let cmap = colorous::CIVIDIS;
-        colorbar_chart.draw_series((0..800).map(|k| {
-            let x = cells_min + k as f64 * dx;
-            let c = cmap.eval_rational(k, 800).as_tuple();
-            Rectangle::new([(x, 0.), (x + dx, 1.)], RGBColor(c.0, c.1, c.2).filled())
-        }))?;
-        root_area.present()?;
-    }
-    /*
-
-        // Post-processing logged data
-        let n_logs = logs_data_tags.len();
-        let (segment_piston, segment_piston_minmax): (Vec<_>, Vec<_>) = (0..n_logs)
-            .map(|i| {
-                let time_series: Vec<_> = modal_fs
-                    .iter()
-                    .skip(i)
-                    .step_by(n_logs)
-                    .map(|y| Option::<Vec<f64>>::from(y).unwrap())
-                    .collect();
-                let piston: Vec<_> = time_series.iter().map(|x| x[0] * 1e6).collect();
-                let piston_max = piston.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
-                let piston_min = piston.iter().cloned().fold(f64::INFINITY, f64::min);
-                println!("Piston min/max: [{},{}]", piston_min, piston_max);
-                (piston, (piston_min, piston_max))
+                    .map(move |point| (x0 + point[0], y0 + point[1]))
+                    .collect()
             })
-            .unzip();
+            .collect();
+        //    let root_area = BitMapBackend::new("nodal_facesheet.png", (800, 880)).into_drawing_area();
+        let root_area = BitMapBackend::gif("nodal_facesheet.gif", (800, 880), 1_000)
+            .unwrap()
+            .into_drawing_area();
 
-        let root_area = BitMapBackend::new("modal_facesheet.png", (1200, 800)).into_drawing_area();
-        root_area.fill(&WHITE)?;
+        for (i, actuators_disp) in modal_fs.chunks(7).enumerate() {
+            let segment_figures: Vec<Vec<f64>> = actuators_disp
+                .iter()
+                .map(|y| Option::<Vec<f64>>::from(y).unwrap())
+                .collect();
 
-        // Plotting ...
-        let piston_max = segment_piston_minmax
-            .iter()
-            .cloned()
-            .fold(f64::NEG_INFINITY, |m, (_, p)| f64::max(m, p));
-        let piston_min = segment_piston_minmax
-            .into_iter()
-            .fold(f64::INFINITY, |m, (p, _)| f64::min(m, p));
-        let mut ctx = ChartBuilder::on(&root_area)
-            .margin(20)
-            .set_label_area_size(LabelAreaPosition::Left, 40)
-            .set_label_area_size(LabelAreaPosition::Bottom, 40)
-            //.caption("Line Plot Demo", ("sans-serif", 40))
-            //.build_cartesian_2d(0f64..n_step as f64 / sampling_rate, -1e-3f64..10e-3f64)
-            .build_cartesian_2d(0f64..n_step as f64 / sampling_rate, piston_min..piston_max)?;
+            root_area.fill(&WHITE)?;
+            let (plot, colorbar) = root_area.split_vertically(800);
+            let lim = 1.75f64;
+            let mut ctx = ChartBuilder::on(&plot)
+                .margin(20)
+                .set_label_area_size(LabelAreaPosition::Left, 20)
+                .set_label_area_size(LabelAreaPosition::Bottom, 20)
+                .caption(
+                    format!("T = {:7.3}s", i as f64 * decimation as f64 / sampling_rate),
+                    ("sans-serif", 16, &BLACK),
+                )
+                //.caption("Line Plot Demo", ("sans-serif", 40))
+                //.build_cartesian_2d(0f64..n_step as f64 / sampling_rate, -1e-3f64..10e-3f64)
+                .build_cartesian_2d(-lim..lim, -lim..lim)?;
+            ctx.configure_mesh().draw()?;
+            let mut max_figs = vec![];
+            let mut min_figs = vec![];
+            for (coord, fig) in coordinates.iter().zip(segment_figures.iter()) {
+                let (x, y): (Vec<_>, Vec<_>) = coord.iter().copied().unzip();
+                max_figs.push(fig.iter().cloned().fold(f64::NEG_INFINITY, f64::max));
+                min_figs.push(fig.iter().cloned().fold(f64::INFINITY, f64::min));
+                plt::trimap(&x, &y, fig, &mut ctx);
+                ctx.draw_series(
+                    coord
+                        .iter()
+                        .map(|&point| Circle::new(point, 2, BLACK.mix(0.25))),
+                )
+                .unwrap();
+            }
 
-        ctx.configure_mesh()
-            .x_desc("Time [s]")
-            .y_desc("Piston")
-            .draw()?;
-
-        let mut colors = colorous::TABLEAU10.iter().cycle();
-
-        for piston in segment_piston.iter() {
-            let color = colors.next().unwrap().as_tuple();
-            let rgb = RGBColor(color.0, color.1, color.2);
-            ctx.draw_series(LineSeries::new(
-                piston
-                    .iter()
-                    .enumerate()
-                    .map(|(k, &x)| (k as f64 / sampling_rate, x)),
-                &rgb,
-            ))?;
+            // COLORBAR
+            let cells_min = 1e6 * min_figs.into_iter().fold(f64::INFINITY, f64::min);
+            let cells_max = 1e6 * max_figs.into_iter().fold(f64::NEG_INFINITY, f64::max);
+            colorbar.fill(&BLACK)?;
+            let mut colorbar_chart = ChartBuilder::on(&colorbar)
+                //    .margin_left(20)
+                //    .margin_right(20)
+                .set_label_area_size(LabelAreaPosition::Bottom, 40)
+                .build_cartesian_2d(cells_min..cells_max, 0f64..1f64)?;
+            let mut mesh = colorbar_chart.configure_mesh();
+            mesh.axis_style(WHITE)
+                .set_tick_mark_size(LabelAreaPosition::Bottom, 5)
+                .x_label_style(("sans-serif", 14, &WHITE))
+                .x_desc("WFE [micron]")
+                .draw()?;
+            let dx = (cells_max - cells_min) / (800 - 1) as f64;
+            let cmap = colorous::CIVIDIS;
+            colorbar_chart.draw_series((0..800).map(|k| {
+                let x = cells_min + k as f64 * dx;
+                let c = cmap.eval_rational(k, 800).as_tuple();
+                Rectangle::new([(x, 0.), (x + dx, 1.)], RGBColor(c.0, c.1, c.2).filled())
+            }))?;
+            root_area.present()?;
         }
-    */
+    }
     Ok(())
 }

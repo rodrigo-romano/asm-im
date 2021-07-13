@@ -1284,6 +1284,7 @@ dependencies = [
 [[package]]
 name = "simulink-rs"
 version = "0.1.0"
+source = "git+https://github.com/rconan/simulink-rs.git?branch=main#9b88580bdf76d0b3ee01953677f72ccf82822858"
 
 [[package]]
 name = "smallvec"
