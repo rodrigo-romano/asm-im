@@ -5,6 +5,8 @@ use dosio::{ios, Dos, IOTags, IO};
 use fem::{dos, FEM};
 use indicatif::ProgressBar;
 use plotters::prelude::*;
+use std::env;
+use std::path::Path;
 use std::time::Instant;
 use structopt::StructOpt;
 
@@ -40,10 +42,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     asm_cmd[0] = 1e-6 / 0.03849;
 
     // Finite element model
+    let fem_data_path_var = env::var("FEM_DATA_PATH")
+        .map_err(|e| format!("FEM_DATA_PATH env var not set! Caused by: {}", e))?;
+
+    let fem_data_path = Path::new(&fem_data_path_var);
+    let fem_state_space_model = if let Ok(var) = env::var("FEM_MODEL") {
+        var
+    } else {
+        "modal_state_space_model_2ndOrder.73.pkl".to_string()
+    };
     let actuators_locations: Vec<Vec<Vec<f64>>> = {
-        let mut fem = FEM::from_pickle(
-        "/media/rconan/FEM/20210614_2105_ASM_topendOnly/modal_state_space_model_2ndOrder.73.pkl",
-    )?;
+        let mut fem = FEM::from_pickle(&fem_data_path.join(fem_state_space_model))?;
         fem.keep_inputs(&[usize::MAX]);
         fem.keep_outputs(&[1, 2, 3, 4, 5, 6, 7]);
         println!("FEM: {}", fem);
@@ -62,8 +71,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         actuators_locations[0].len(),
         actuators_locations[0][0].len()
     );
+    let snd_order_model = env::var("SND_ORDER_MODEL")
+        .map_err(|e| format!("SND_ORDER_MODEL env var not set! Caused by: {}", e))?;
+    // model: modal_state_space_model_2ndOrder_1500Hz_noRes_postproc_v1.pkl
     let snd_ord = {
-        let snd_ord = dos::SecondOrder::from_pickle("/media/rconan/FEM/20210614_2105_ASM_topendOnly/modal_state_space_model_2ndOrder_1500Hz_noRes_postproc_v1.pkl")?;
+        let snd_ord = dos::SecondOrder::from_pickle(fem_data_path.join(snd_order_model))?;
         println!("{}", &snd_ord);
         // Model reduction
         snd_ord.into(
