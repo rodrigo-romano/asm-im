@@ -67,8 +67,10 @@ dependencies = [
  "fem",
  "indicatif",
  "plotters",
+ "serde-pickle",
  "simple_logger",
  "structopt",
+ "windloading",
 ]
 
 [[package]]
@@ -1542,6 +1544,16 @@ name = "winapi-x86_64-pc-windows-gnu"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "712e227841d057c1ee1cd2fb22fa7e5a5461ae8e48fa2ca79ec42cfc1931183f"
+
+[[package]]
+name = "windloading"
+version = "0.1.0"
+source = "git+https://github.com/rconan/windloading.git?branch=main#8e7ae94cf3fefb7a916067556a564eff057443d6"
+dependencies = [
+ "dosio",
+ "serde",
+ "serde-pickle",
+]
 
 [[package]]
 name = "wio"

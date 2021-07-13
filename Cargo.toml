@@ -17,3 +17,5 @@ colorous = "1.0.5"
 structopt = "0.3.22"
 complot = { git = "https://github.com/rconan/complot.git" }
 indicatif = "0.16.2"
+windloading = { git = "https://github.com/rconan/windloading.git", branch = "main" }
+serde-pickle = "0.6.2"

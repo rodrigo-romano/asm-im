@@ -5,10 +5,14 @@ use dosio::{ios, Dos, IOTags, IO};
 use fem::{dos, FEM};
 use indicatif::ProgressBar;
 use plotters::prelude::*;
+use serde_pickle as pkl;
 use std::env;
+use std::fs::File;
+use std::io::BufWriter;
 use std::path::Path;
 use std::time::Instant;
 use structopt::StructOpt;
+use windloading::WindLoads;
 
 #[derive(Debug, StructOpt)]
 #[structopt(name = "ASM-IM", about = "Integrated Model with FDR ASM")]
@@ -21,6 +25,9 @@ struct Opt {
     /// GIF animation flag
     #[structopt(long)]
     gif: bool,
+    /// Data logging decimation
+    #[structopt(long = "log", default_value = "8")]
+    log_decimation: usize,
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -36,10 +43,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         M2segment6axiald,
         M2segment7axiald
     );
+    let rbms_tags = ios!(MCM2CP6D, MCM2RB6D, MCM2Lcl);
     let mut asms = ASMS::new().modal_forces_gain(opt.modal_forces_gain);
     // ASM command input (segment #1)
     let mut asm_cmd = vec![0f64; 66];
-    asm_cmd[0] = 1e-6 / 0.03849;
+    asm_cmd[0] = 0e-6 / 0.03849;
 
     // Finite element model
     let fem_data_path_var = env::var("FEM_DATA_PATH")
@@ -79,12 +87,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("{}", &snd_ord);
         // Model reduction
         snd_ord.into(
-            // Segment #1
-            asms.inputs_tags(),
             {
+                let mut inputs = vec![ios!(MCM2Lcl6F)];
+                inputs.extend_from_slice(&asms.inputs_tags());
+                inputs
+            },
+            {
+                let mut outputs = ios!(MCM2CP6D, MCM2RB6D, MCM2Lcl);
                 let mut u = asms.outputs_tags();
                 u.append(&mut logs_data_tags.clone());
-                u
+                outputs.extend_from_slice(&u);
+                outputs
             },
         )
     };
@@ -96,10 +109,24 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // FEM state space output
     let mut fem: Option<Vec<IO<Vec<f64>>>> = None;
 
+    // Wind loads
+    let now = Instant::now();
+    let wind_loads_path = env::var("WIND_LOADS")
+        .map_err(|e| format!("WIND_LOADS env var not set! Caused by: {}", e))?;
+    let mut wind_loading = WindLoads::from_pickle(wind_loads_path)?
+        .range(0.0, 2.0)
+        .m2_segments()?
+        .build()?;
+    println!("Wind loads loaded in {}ms", now.elapsed().as_millis());
+    println!("wind loads outputs: {:#?}", wind_loading.outputs_tags());
+    let mut wind_forces = Some(vec![ios!(MCM2Lcl6F(vec![0f64; 42]))]);
+    let wind_decimation = 8_usize;
+
     let n_step = opt.n_step;
-    let decimation = 80_usize;
+    let decimation = opt.log_decimation;
     let mut modal_fs: Vec<IO<Vec<f64>>> =
         Vec::with_capacity(logs_data_tags.len() * n_step / decimation);
+    let mut rbms: Vec<IO<Vec<f64>>> = Vec::with_capacity(rbms_tags.len() * n_step / decimation);
     let pb = ProgressBar::new(n_step as u64);
     let now = Instant::now();
     for k in 0..n_step {
@@ -125,7 +152,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             M2S6Cmd(asm_cmd.clone()),
             M2S7Cmd(asm_cmd.clone())
         ));
-        let y = asms.in_step_out(Some(u))?;
+        let mut y = asms.in_step_out(Some(u))?;
 
         #[cfg(debug)]
         print!(
@@ -135,6 +162,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             Option::<Vec<f64>>::from(&y.clone().unwrap()[ios!(M2S1FSRBModalF)]).unwrap()[0],
         );
 
+        if k % wind_decimation == 0 {
+            wind_forces = wind_loading.outputs();
+        }
+        if let Some(x) = y.as_mut() {
+            x.extend_from_slice(wind_forces.as_ref().unwrap());
+        }
+
         // FEM update & output:
         fem = dms.in_step_out(y)?;
         //  - logging the face sheet outputs
@@ -142,6 +176,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             if k % decimation == 0 {
                 logs_data_tags.iter().for_each(|t| {
                     modal_fs.push(x[t].clone());
+                });
+                rbms_tags.iter().for_each(|t| {
+                    rbms.push(x[t].clone());
                 });
             }
             #[cfg(debug)]
@@ -204,6 +241,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .sum::<f64>()
         / (7f64 * 675f64);
     println!("Pupil surface STD: {:4.0?}nm", 1e3 * surface_var.sqrt());
+
+    let f = File::create("data/rbms.pkl")?;
+    let mut writer = BufWriter::with_capacity(100_000, f);
+    pkl::to_writer(&mut writer, &rbms, true)?;
 
     if opt.gif {
         let outer_radial_center = 1.1f64;
