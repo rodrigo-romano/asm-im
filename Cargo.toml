@@ -10,9 +10,10 @@ members = ["asm-control"]
 [dependencies]
 dosio = { git = "https://github.com/rconan/dosio.git", branch = "main" }
 fem = { git = "https://github.com/rconan/fem.git", branch = "dos", features = ["dos"] }
-#fem = { path = "/home/rconan/projects/fem", features = ["dos"] }
 simple_logger = "1.11.0"
-asm-control = { path = "asm-control"} #, features = ["eight_khz"] }
+asm-control = { path = "asm-control"}
 plotters = "0.3.1"
 colorous = "1.0.5"
 structopt = "0.3.22"
+complot = { git = "https://github.com/rconan/complot.git" }
+indicatif = "0.16.2"
