@@ -1,0 +1,51 @@
+The wind loads applied to FEM of the telescope have been computing with
+Computational Fluid Dynamics (CFD) simulations.
+The CFD model\cite{GMT.DOC.05211} of the telescope and enclosure is based on CAD drawings released
+for the PDR of the GMT mount and the GMT enclosure.
+A database of dome seeing, wind loads and heat transfer coefficients from 60 CFD
+simulations covering a range of wind speed and orientation,
+telescope pointing and enclosure configurations have been
+built\cite{GMT.DOC.05214}.
+
+Using the CFD wind loads on the telescope FEM,
+the time series of rigid body motions of M1 and M2 segments and of the
+truss--to--top-end interface have been computed for 15 CFD cases, as listed in
+Table~\ref{tab:cfd-cases}.
+The mapping and transformations of the CFD wind loads to FEM wind loads is
+described in \cite{GMT.DOC.05506}.
+
+\begin{table}
+  \centering
+  \begin{tabular}{c}
+    -
+  \end{tabular}
+  \begin{tabular}{ccccc}\toprule
+    Zenith & Azimuth & Vents  & Wind screen & Wind speed \\
+    deg & deg & - & - & m/s \\\midrule
+    30     & 0       & open & stowed & 2 \\ 
+    30     & 0       & open & stowed & 7 \\ 
+    30     & 0       & closed & deployed & 12 \\ 
+    30     & 45       & open & stowed & 2 \\ 
+    30     & 45       & open & stowed & 7 \\ 
+    30     & 45       & closed & deployed & 12 \\ 
+    30     & 45       & closed & deployed & 17 \\ 
+    30     & 90       & open & stowed & 2 \\ 
+    30     & 90       & open & stowed & 7 \\ 
+    30     & 90       & closed & deployed & 12 \\ 
+    30     & 135       & open & stowed & 7 \\ 
+    30     & 135       & closed & deployed & 12 \\ 
+    30     & 180       & open & stowed & 7 \\ 
+    30     & 180       & closed & deployed & 12 \\ 
+    60     & 45       & open & stowed & 7 \\ \bottomrule
+  \end{tabular}
+  \label{tab:cfd-cases}
+  \caption{List of CFD cases used to compute the wind motions time series.}
+\end{table}
+
+
+
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: "asm-im"
+%%% End:

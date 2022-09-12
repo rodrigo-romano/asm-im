@@ -42,16 +42,20 @@ Figure~\ref{fig:mount-cl-plots} shows the closed--loop (top) and sensitivity (bo
   \label{fig:mount-cl-plots}
 \end{figure}
 %
-The OAD requirements REQ--L3--OAD--34824 and REQ--L3--OAD--34829 define a \SI{2.4}{Hz} closed--loop bandwidth for the azimuth and elevation axis, respectively. The red dashed lines indicate the envelope of complaint responses. The results indicate that the OAD controller design achieves the required bandwidth. The sensitivity plots include the rejection transfer function (RTF) limits REQ--L4--MNT--48987 stated in the Mount Subsystem requirement document~\cite{MOUNT-RD}. For convenience, the envelopes in the GIR plots (on the right) assume the same requirements as those used for the azimuth and elevation axes. The obtained sensitivity transfer functions contours partially met the level--4 RTF limits. 
+The OAD requirements REQ--L3--OAD--34824 and REQ--L3--OAD--34829 define a \SI{2.4}{Hz} closed--loop bandwidth for the azimuth and elevation axis, respectively. The red dashed lines indicate the envelope of compliant responses. The results indicate that the OAD controller design achieves the required bandwidth. The sensitivity plots include the rejection transfer function (RTF) limits REQ--L4--MNT--48987 stated in the Mount Subsystem requirement document~\cite{MOUNT-RD}. For convenience, the envelopes in the GIR plots (on the right) assume the same requirements as those used for the azimuth and elevation axes. The obtained sensitivity transfer functions contours partially met the level--4 RTF limits. 
 
-The mount transfer function Nichols plot (Figure~\ref{fig:mnt-nichols-plot}) shows slight violates the dashed line indicating the robustness boundary assuming a vector margin\footnote{The vector margin (VM) is the reciprocal of the maximum value of the loop sensitivity transfer function $S\left(j\omega\right)$ magnitude, i.e.$$\text{VM}=\frac{1}{\max \left|S(j\omega)\right|}.$$} (VM) of $0.5$. That indicates a limited effect on the stability margins of the feedback control system. 
+The mount transfer function Nichols plot (Figure~\ref{fig:mnt-nichols-plot}) slightly crosses the dashed line indicating the robustness boundary assuming a vector margin\footnote{The vector margin (VM) is the reciprocal of the maximum value of the loop sensitivity transfer function $S\left(j\omega\right)$ magnitude, i.e.$$\text{VM}=\frac{1}{\max \left|S(j\omega)\right|}.$$} (VM) of $0.5$. That indicates a limited effect on the stability margins of the feedback control system. 
 \begin{figure}[!htb]
   \centering
   \includegraphics[width=\linewidth]{./ctrl_sec_images/all_mnt_axes_nichols.eps}
   \caption{Nichols plot of the mount axes transfer functions.}
   \label{fig:mnt-nichols-plot}
 \end{figure}
-Simulations also suggest that the RTF envelope violations at high--frequencies have not led to significant performance degradation. That said, one should be aware of that issue, particularly for a conservative 0.5\% structural damping analysis. One can also notice that the nominal ODC GIR control design provides \SI{4.6}{Hz} bandwidth, significantly higher than the obtained for the other mount axes. The GIR loop disturbance rejection is also higher in the low--frequency range.
+Simulations also suggest that the RTF envelope violations at high--frequencies
+have not led to significant performance degradation. That said, one should be
+aware of that issue, particularly for a conservative 0.5\% structural damping
+analysis. One can also notice that the nominal ODC GIR control design provides
+\SI{4.6}{Hz} bandwidth, significantly higher than the one obtained for the other mount axes. The GIR loop disturbance rejection is also higher in the low--frequency range.
 
 
 
@@ -76,7 +80,8 @@ Figure~\ref{fig:m1_ofl} provides a brief representation of the M1 force loop mod
 %
  A linear transformation matrix $M_\text{hp}$ maps the HP load cell measurement signal $x_\text{LC}$ into a load vector $x_\text{FM}$ of forces and moments about the segment center of gravity (CG). The outer force loop dynamic controller $C_\text{ofl}$ computes the signal $\tau$, which compensates the load measured by the HP load cells. The controller output $\tau$ is a ``virtual'' control demand signal, as it should be distributed over the support actuators (SA) lateral, cross--lateral and axial forces. The matrix $K_\text{bal}$ accomplishes such task~\cite{GMTO.DOC.01498}. The SA compensation command drives an inner force loop, which is represented by a set of first--order linear low--pass filters with a \SI{-3}{dB} corner frequency at \SI{15}{Hz}.
 
- The document \cite{GMT.DOC.05153} prvides a throughout description of the M1 control system under the GMT integrated model perspective.
+ The document \cite{GMT.DOC.05153} provides a thorough description of the M1
+ control system in the context of the GMT integrated model.
 
 \subsubsection{M2 positioner}
 \label{sec:m2-ctrlr}
