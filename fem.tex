@@ -5,7 +5,15 @@
 % \item ...
 % \end{itemize}
 
-The finite element mesh of the telescope is the basis of a linear state space model that utilizes modal and static solutions of the FEM. Modes are obtained from 0 to 1475 Hz. 
+The finite element mesh of the telescope is the basis of a linear state space
+model that utilizes modal and static solutions of the FEM\cite{20220824_1218_MT_mount_zen_30_m1HFN_ASM_D}. Modes are obtained
+from 0 to 1475 Hz(Fig.~\ref{fig:fem-modes}).
+\begin{figure}
+  \centering
+  \includegraphics[width=0.8\linewidth]{FEM/eigen_frequencies.png}
+  \caption{FEM eigen frequencies.}
+  \label{fig:fem-modes}
+\end{figure}
 To reduce the number of modes to a manageable number a constraint is added when solving for modes above 75 Hz The constraint fixes all nodes below the truss interface of the topend. 
 The static solution is employed to correct the DC gain of the state space model which is due to omitting higher frequency modes as well as the additional constraint.
 
@@ -34,7 +42,7 @@ active optics on M1 and M2.
 
 \begin{figure}
   \centering
-  \includegraphics[width=0.5\textwidth]{FEM/whole_telescope.png}
+  \includegraphics[width=0.65\textwidth]{FEM/whole_telescope.png}
   \caption{Whole telescope FEM.}
   \label{fig:fem-whole}
 \end{figure}

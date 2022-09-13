@@ -13,12 +13,17 @@ truss--to--top-end interface have been computed for 15 CFD cases, as listed in
 Table~\ref{tab:cfd-cases}.
 The mapping and transformations of the CFD wind loads to FEM wind loads is
 described in \cite{GMT.DOC.05506}.
+The 1st few seconds of the wind loads are weighted with a sigmoid:
+\begin{equation}
+  \label{eq:sigmoid}
+  S(t) = {1 \over \left( 1 + \exp(-5\left( t - 0.75 \right)) \right)^2}
+\end{equation}
+in order to avoid step-driven excitation of the telescope FEM.
+The CFD wind loads are originally sampled at 20Hz, the wind loads applied to the FEM are
+sampled a 8kHz using linear interpolation. 
 
 \begin{table}
   \centering
-  \begin{tabular}{c}
-    -
-  \end{tabular}
   \begin{tabular}{ccccc}\toprule
     Zenith & Azimuth & Vents  & Wind screen & Wind speed \\
     deg & deg & - & - & m/s \\\midrule

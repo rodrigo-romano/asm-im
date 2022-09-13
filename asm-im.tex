@@ -7,7 +7,7 @@
 \usepackage{booktabs}
 \usepackage{amsfonts}
 
-\DocID{GMT-XXX-\#\#\#\#}
+\DocID{GMT-DOC-05509}
 \DocVersion{1.0}
 \DocStatus{Draft}
 
@@ -59,6 +59,9 @@
 \listoftables
 
 \clearpage
+\begin{tabular}{c}
+  -
+\end{tabular}
 
 \section{Purpose}
 \label{sec:purpose}
@@ -66,13 +69,13 @@
 The document describes the GMT integrated model in its version with the ASMS FEM
 and ASMS inner control system.
 
-\section{Introduction}
-\label{sec:introduction}
+% \section{Introduction}
+% \label{sec:introduction}
 
 \section{Integrated model}
 
-\subsection{Integrated model}
-\label{sec:im}
+% \subsection{Integrated model}
+% \label{sec:im}
 
 \subsection{FEM}
 \label{sec:fem}
@@ -95,16 +98,63 @@ and ASMS inner control system.
 
 \appendix
 
+\section{Software}
+\label{sec:software}
+
+The Integrated Model with the ASMS\cite{asms_im} is written in Rust\footnote{\url{https://www.rust-lang.org/}} based on
+the integrated model actor computing framework\cite{dos_actors}.
+The controllers are all C code automatically converted by Matlab from Simulink
+models and inserted into Rust wrappers.
+Results have been generated with version 0.1.0 of the model.
+
+
 \section{Validation and tests}
 \label{sec:tests}
+
+The integrated model is subjected to a series of tests before going into
+production.
+There are 2 main categories of tests: unit tests and integrated tests.
+Unit tests are applied to the FEM and individual control system.
+Integrated tests validate the FEM together with different controllers.
 
 \subsection{FEM}
 \label{sec:fem-tests}
 
+Fig.~\ref{fig:asm-gains} is an example of unit testing the ASMS piston and
+tilt-tilt gain of the FEM. 
+
+\begin{figure}
+  \centering
+  \includegraphics[width=0.495\linewidth]{FEM/validation/activeOpticsASM/activeOpticsASM_ASM_piston_gains.jpg}
+  \includegraphics[width=0.495\linewidth]{FEM/validation/activeOpticsASM/activeOpticsASM ASM tip tilt gains.jpg}
+  \caption{ASM piston and tip-tilt gain validation}
+  \label{fig:asm-gains}
+\end{figure}
+
 \subsection{Controllers}
 \label{sec:ctrlr-tests}
 
+\subsection{Integrated tests}
+\label{sec:int-tests}
 
+The integrated tests are listed in Table~\ref{tab:int-tests}.
+The controllers are added to the model one after the other allowing to identify
+and to debug issues with specific controllers.
+An integrated model is considered ready for production once it passed all the
+integrated tests.
+
+\begin{table}
+  \centering
+  \begin{tabular}{ll}\toprule
+    Test & Status \\\midrule
+    FEM + mount controller & passed \\
+    FEM + mount/M1 controllers & passed \\
+    FEM + mount/M1/M2 positioner controllers & passed \\
+    FEM + mount/M1/M2 positioner/ASMS controllers & passed \\\bottomrule
+  \end{tabular}
+  \caption{Integrated tests}
+  \label{tab:int-tests}
+\end{table}
 
 
 \printbibliography
